@@ -1,0 +1,5 @@
+{
+  "name": "Gym Flow",
+  "description": "Professional Gym Management System with Role-Based Access Control for Admins, Receptionists, and Trainers.",
+  "requestFramePermissions": []
+}
