@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutGrid, Users, CreditCard, CheckCircle, Bell, BarChart3, LogOut, Sun, Moon, Menu, Settings } from 'lucide-react';
+import { LayoutGrid, Users, CreditCard, CheckCircle, Bell, BarChart3, LogOut, Sun, Moon, Menu, Settings, Phone } from 'lucide-react';
 import { Role, AppPermissions } from '../types';
 
 interface SidebarProps {
@@ -20,6 +20,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ page, setPage, role, dark, set
   const navItems = [
     { id: "dashboard", icon: LayoutGrid, label: "Dashboard", roles: ["admin", "receptionist", "trainer"] },
     { id: "members", icon: Users, label: "Members", roles: ["admin", "receptionist", "trainer"] },
+    { id: "followup", icon: Phone, label: "Follow Up", roles: ["admin", "receptionist"] },
     { id: "plans", icon: CreditCard, label: "Plans", roles: ["admin", "receptionist", "trainer"] },
     { id: "checkin", icon: CheckCircle, label: "Check-In", roles: ["admin", "receptionist", "trainer"] },
     { id: "payments", icon: CreditCard, label: "Payments", roles: ["admin", "receptionist", "trainer"] },

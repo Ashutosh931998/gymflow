@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Member, Plan, Payment, Attendance, Role } from './types';
+import { User, Member, Plan, Payment, Attendance, Role, Lead } from './types';
 import { DB } from './db';
 import { BASE_PLANS, TRAINERS, PAYMENT_METHODS } from './constants';
 import { uid, toDay } from './utils';
@@ -8,6 +8,7 @@ import { Sidebar } from './components/Sidebar';
 import { Login } from './components/Login';
 import { Dashboard } from './pages/Dashboard';
 import { MembersPage } from './pages/Members';
+import { FollowUpPage } from './pages/FollowUp';
 import { StaffPage } from './pages/Staff';
 import { Toast } from './components/Toast';
 import { Confirm } from './components/Confirm';
@@ -28,8 +29,8 @@ const DEFAULT_PERMISSIONS: AppPermissions = {
     actions: ['member:add', 'member:edit']
   },
   receptionist: {
-    pages: ['dashboard', 'members', 'checkin', 'payments', 'alerts'],
-    actions: ['member:add', 'member:edit', 'payment:add']
+    pages: ['dashboard', 'members', 'followup', 'checkin', 'payments', 'alerts'],
+    actions: ['member:add', 'member:edit', 'payment:add', 'lead:add', 'lead:edit']
   }
 };
 
@@ -46,6 +47,7 @@ export default function App() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [staff, setStaff] = useState<User[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [permissions, setPermissions] = useState<AppPermissions>(DEFAULT_PERMISSIONS);
   
   const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' | 'warn' } | null>(null);
@@ -57,23 +59,30 @@ export default function App() {
   const notify = (msg: string, type: 'ok' | 'err' | 'warn' = 'ok') => setToast({ msg, type });
 
   useEffect(() => {
-    if (authed && curUser && gymName) {
-      const data = DB.load(gymName);
-      if (data) {
-        setPlans(data.plans || BASE_PLANS);
-        setMembers(data.members || []);
-        setPayments(data.payments || []);
-        setAttendance(data.attendance || []);
-        setStaff(data.staff || []);
-        setPermissions(data.permissions || DEFAULT_PERMISSIONS);
+    const loadData = async () => {
+      if (authed && curUser && gymName) {
+        const data = await DB.load(gymName);
+        if (data) {
+          setPlans(data.plans || BASE_PLANS);
+          setMembers(data.members || []);
+          setPayments(data.payments || []);
+          setAttendance(data.attendance || []);
+          setStaff(data.staff || []);
+          setLeads(data.leads || []);
+          setPermissions(data.permissions || DEFAULT_PERMISSIONS);
+        }
       }
-    }
+    };
+    loadData();
   }, [authed, curUser, gymName]);
 
   useEffect(() => {
-    if (authed && curUser && gymName) {
-      DB.save(gymName, { plans, members, payments, attendance, staff, permissions, meta: { gymName } });
-    }
+    const saveData = async () => {
+      if (authed && curUser && gymName) {
+        await DB.save(gymName, { plans, members, payments, attendance, staff, leads, permissions, meta: { gymName } });
+      }
+    };
+    saveData();
   }, [plans, members, payments, attendance, staff, permissions, gymName, authed, curUser]);
 
   const handleLogin = (u: User, g: string) => {
@@ -158,6 +167,20 @@ export default function App() {
                   dark={dark} 
                 />
               )}
+              {page === "followup" && (
+                <FollowUpPage 
+                  leads={leads} 
+                  search={search} setSearch={setSearch}
+                  onAdd={() => can('lead:add') ? setModal({ type: "lead" }) : notify("Access denied", "err")}
+                  onEdit={(l) => can('lead:edit') ? setModal({ type: "lead", data: l }) : notify("Access denied", "err")}
+                  onDelete={(l) => can('lead:delete') ? setConfirm({ msg: `Delete lead ${l.name}?`, fn: () => setLeads(p => p.filter(x => x.id !== l.id)) }) : notify("Access denied", "err")}
+                  onStatusChange={(id, status) => {
+                    setLeads(p => p.map(x => x.id === id ? { ...x, status } : x));
+                    notify("Status updated");
+                  }}
+                  dark={dark}
+                />
+              )}
               {page === "staff" && (
                 <StaffPage 
                   staff={staff} role={curUser.role} 
@@ -166,9 +189,9 @@ export default function App() {
                   onDelete={(u) => can('staff:add') ? setConfirm({ 
                     msg: `Remove ${u.name}?`, 
                     sub: "They will lose access immediately.", 
-                    fn: () => {
+                    fn: async () => {
                       setStaff(p => p.filter(x => x.id !== u.id));
-                      DB.removeFromRegistry(u.email);
+                      await DB.removeFromRegistry(u.email);
                     } 
                   }) : notify("Access denied", "err")} 
                   dark={dark} 
@@ -338,6 +361,19 @@ export default function App() {
           }} 
         />
       )}
+
+      {modal?.type === "lead" && (
+        <LeadModal 
+          data={modal.data} dark={dark} 
+          onClose={() => setModal(null)} 
+          onSave={(l: any) => {
+            if (modal.data) setLeads(p => p.map(x => x.id === l.id ? l : x));
+            else setLeads(p => [l, ...p]);
+            setModal(null);
+            notify(modal.data ? "Lead updated" : "Lead registered");
+          }} 
+        />
+      )}
     </div>
   );
 }
@@ -469,6 +505,35 @@ const PaymentModal = ({ members, dark, onSave, onClose }: any) => {
         <Fld label="Status"><select value={f.status} onChange={e => setF({ ...f, status: e.target.value as any })} className={SS(dark)}><option value="Paid">Paid</option><option value="Pending">Pending</option></select></Fld>
       </div>
       <button onClick={save} className="w-full bg-orange-500 text-white font-bold py-3 rounded-xl mt-4">Record Payment</button>
+    </Modal>
+  );
+};
+
+const LeadModal = ({ data: init, dark, onSave, onClose }: any) => {
+  const [f, setF] = useState(init || { name: "", phone: "", email: "", expectedJoinDate: toDay(), status: "Follow up", notes: "", createdAt: new Date().toISOString() });
+  const [errs, setErrs] = useState<any>({});
+
+  const save = () => {
+    const e: any = {};
+    if (!f.name.trim()) e.name = "Name required";
+    if (!f.phone.trim()) e.phone = "Phone required";
+    if (Object.keys(e).length) return setErrs(e);
+    onSave({ ...f, id: init?.id || uid() });
+  };
+
+  return (
+    <Modal title={init ? "Edit Lead" : "Register Lead"} onClose={onClose}>
+      <Fld label="Full Name *" err={errs.name}><input value={f.name} onChange={e => setF({ ...f, name: e.target.value })} className={IS(errs.name, dark)} placeholder="Potential member name" /></Fld>
+      <div className="grid grid-cols-2 gap-3">
+        <Fld label="Phone *" err={errs.phone}><input value={f.phone} onChange={e => setF({ ...f, phone: e.target.value })} className={IS(errs.phone, dark)} placeholder="98xxxxxxxx" /></Fld>
+        <Fld label="Email"><input value={f.email} onChange={e => setF({ ...f, email: e.target.value })} className={IS(null, dark)} placeholder="email@gmail.com" /></Fld>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Fld label="Expected Joining Date"><input type="date" value={f.expectedJoinDate} onChange={e => setF({ ...f, expectedJoinDate: e.target.value })} className={IS(null, dark)} /></Fld>
+        <Fld label="Status"><select value={f.status} onChange={e => setF({ ...f, status: e.target.value as any })} className={SS(dark)}><option value="Follow up">Follow up</option><option value="Joined">Joined</option><option value="Not interested">Not interested</option></select></Fld>
+      </div>
+      <Fld label="Notes"><textarea value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} className={`${IS(null, dark)} resize-none`} rows={3} placeholder="Any specific requirements or discussion details..." /></Fld>
+      <button onClick={save} className="w-full bg-orange-500 text-white font-bold py-3 rounded-xl mt-4">{init ? "Update Lead" : "Register Lead"}</button>
     </Modal>
   );
 };

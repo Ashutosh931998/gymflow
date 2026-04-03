@@ -1,35 +1,46 @@
-import { DB_PREFIX } from './constants';
-
 export const DB = {
-  key: (e: string) => `${DB_PREFIX}${e.toLowerCase().trim()}`,
-  
   // Global registry for authentication
-  getRegistry: () => {
-    const r = localStorage.getItem(`${DB_PREFIX}registry`);
-    return r ? JSON.parse(r) : {};
+  getRegistry: async () => {
+    try {
+      const res = await fetch("/api/registry");
+      return await res.json();
+    } catch {
+      return {};
+    }
   },
-  saveToRegistry: (email: string, data: { password?: string; role: string; gymName: string; name: string }) => {
-    const r = DB.getRegistry();
-    r[email.toLowerCase().trim()] = data;
-    localStorage.setItem(`${DB_PREFIX}registry`, JSON.stringify(r));
+  saveToRegistry: async (email: string, data: { password?: string; role: string; gymName: string; name: string }) => {
+    try {
+      await fetch("/api/registry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, data })
+      });
+    } catch {}
   },
-  removeFromRegistry: (email: string) => {
-    const r = DB.getRegistry();
-    delete r[email.toLowerCase().trim()];
-    localStorage.setItem(`${DB_PREFIX}registry`, JSON.stringify(r));
+  removeFromRegistry: async (email: string) => {
+    try {
+      await fetch(`/api/registry/${encodeURIComponent(email)}`, {
+        method: "DELETE"
+      });
+    } catch {}
   },
 
-  load: (e: string) => {
+  load: async (gymName: string) => {
     try {
-      const r = localStorage.getItem(DB.key(e));
-      return r ? JSON.parse(r) : null;
+      const res = await fetch(`/api/gym/${encodeURIComponent(gymName)}`);
+      if (!res.ok) return null;
+      return await res.json();
     } catch {
       return null;
     }
   },
-  save: (e: string, d: any) => {
+  save: async (gymName: string, data: any) => {
     try {
-      localStorage.setItem(DB.key(e), JSON.stringify(d));
+      await fetch(`/api/gym/${encodeURIComponent(gymName)}/sync`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
     } catch {}
   },
 };

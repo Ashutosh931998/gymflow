@@ -14,7 +14,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, dark }) => {
   const [form, setForm] = React.useState({ name: '', email: '', gymName: '', pass: '', cpass: '' });
   const [errs, setErrs] = React.useState<any>({});
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     const e: any = {};
     if (!form.email.trim()) e.email = "Email required";
     if (!form.pass.trim()) e.pass = "Password required";
@@ -29,7 +29,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, dark }) => {
     }
     
     // 2. Check registry
-    const reg = DB.getRegistry();
+    const reg = await DB.getRegistry();
     const found = reg[email];
     if (found && found.password === form.pass) {
       onLogin({ 
@@ -46,7 +46,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, dark }) => {
     setErrs({ pass: "Invalid credentials. Check email or password." });
   };
 
-  const handleSignup = () => {
+  const handleSignup = async () => {
     const e: any = {};
     if (!form.name.trim()) e.name = "Name required";
     if (!form.gymName.trim()) e.gymName = "Gym name required";
@@ -59,7 +59,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, dark }) => {
     const gym = form.gymName.trim();
     
     // Save to registry
-    DB.saveToRegistry(email, { 
+    await DB.saveToRegistry(email, { 
       password: form.pass, 
       role: "admin", 
       gymName: gym, 
