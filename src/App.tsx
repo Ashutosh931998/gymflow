@@ -21,6 +21,7 @@ import { PaymentsPage } from './pages/Payments';
 import { ReportsPage } from './pages/Reports';
 import { AlertsPage } from './pages/Alerts';
 import { SettingsPage } from './pages/Settings';
+import { PromoPage } from './pages/Promo';
 import { AppPermissions } from './types';
 
 const DEFAULT_PERMISSIONS: AppPermissions = {
@@ -226,6 +227,9 @@ export default function App() {
                   staff={staff} plans={plans} 
                   role={curUser.role} dark={dark} 
                 />
+              )}
+              {page === "promo" && (
+                <PromoPage gymName={gymName} dark={dark} />
               )}
               {page === "alerts" && (
                 <AlertsPage 

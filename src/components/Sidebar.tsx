@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutGrid, Users, CreditCard, CheckCircle, Bell, BarChart3, LogOut, Sun, Moon, Menu, Settings, Phone } from 'lucide-react';
+import { LayoutGrid, Users, CreditCard, CheckCircle, Bell, BarChart3, LogOut, Sun, Moon, Menu, Settings, Phone, Video } from 'lucide-react';
 import { Role, AppPermissions } from '../types';
 
 interface SidebarProps {
@@ -27,6 +27,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ page, setPage, role, dark, set
     { id: "alerts", icon: Bell, label: "Alerts", roles: ["admin", "receptionist", "trainer"] },
     { id: "reports", icon: BarChart3, label: "Reports", roles: ["admin", "receptionist", "trainer"] },
     { id: "staff", icon: Users, label: "Staff", roles: ["admin", "receptionist", "trainer"] },
+    { id: "promo", icon: Video, label: "Promo Reel", roles: ["admin"] },
     { id: "settings", icon: Settings, label: "Settings", roles: ["admin"] },
   ].filter(n => {
     if (role === 'admin') return n.roles.includes(role);
