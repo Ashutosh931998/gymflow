@@ -16,20 +16,28 @@ app.use(express.json());
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI;
 
-if (!MONGODB_URI) {
-  console.error("CRITICAL ERROR: MONGODB_URI environment variable is not set.");
-  console.error("Please add MONGODB_URI to your environment variables in the Settings menu (Gear Icon ⚙️).");
-  console.error("Format: mongodb+srv://<username>:<password>@cluster0.mongodb.net/gymflow?retryWrites=true&w=majority");
-} else {
-  mongoose.connect(MONGODB_URI)
-    .then(() => console.log("Successfully connected to MongoDB Atlas"))
-    .catch((err) => {
-      console.error("MongoDB connection error details:");
-      console.error(err);
-      if (err.message.includes("ECONNREFUSED")) {
-        console.error("HINT: It looks like you're trying to connect to a local database, but this environment requires a remote MongoDB Atlas connection.");
-      }
-    });
+let isConnected = false;
+
+export const connectDB = async () => {
+  if (isConnected) return;
+
+  if (!MONGODB_URI) {
+    console.error("CRITICAL ERROR: MONGODB_URI environment variable is not set.");
+    return;
+  }
+
+  try {
+    await mongoose.connect(MONGODB_URI);
+    isConnected = true;
+    console.log("Successfully connected to MongoDB Atlas");
+  } catch (err) {
+    console.error("MongoDB connection error details:", err);
+  }
+};
+
+// Initial connection attempt for long-running server
+if (!process.env.NETLIFY) {
+  connectDB();
 }
 
 // --- Schemas & Models ---
@@ -122,9 +130,12 @@ const RegistrySchema = new mongoose.Schema({
 const Registry = mongoose.model("Registry", RegistrySchema);
 
 // --- API Routes ---
+const router = express.Router();
+
+router.get("/health", (req, res) => res.json({ status: "ok" }));
 
 // Registry/Auth Endpoints
-app.get("/api/registry", async (req, res) => {
+router.get("/registry", async (req, res) => {
   try {
     const r = await Registry.find({});
     const registry: any = {};
@@ -142,7 +153,7 @@ app.get("/api/registry", async (req, res) => {
   }
 });
 
-app.post("/api/registry", async (req, res) => {
+router.post("/registry", async (req, res) => {
   try {
     const { email, data } = req.body;
     await Registry.findOneAndUpdate(
@@ -156,7 +167,7 @@ app.post("/api/registry", async (req, res) => {
   }
 });
 
-app.delete("/api/registry/:email", async (req, res) => {
+router.delete("/registry/:email", async (req, res) => {
   try {
     await Registry.deleteOne({ email: req.params.email.toLowerCase().trim() });
     res.json({ status: "success" });
@@ -166,7 +177,7 @@ app.delete("/api/registry/:email", async (req, res) => {
 });
 
 // Load all data for a gym
-app.get("/api/gym/:name", async (req, res) => {
+router.get("/gym/:name", async (req, res) => {
   try {
     const gymName = req.params.name;
     const gym = await Gym.findOne({ name: gymName });
@@ -193,7 +204,7 @@ app.get("/api/gym/:name", async (req, res) => {
 });
 
 // Save/Sync all data (Bulk update)
-app.post("/api/gym/:name/sync", async (req, res) => {
+router.post("/gym/:name/sync", async (req, res) => {
   try {
     const gymName = req.params.name;
     const { members, plans, payments, attendance, staff, leads, permissions } = req.body;
@@ -205,8 +216,7 @@ app.post("/api/gym/:name/sync", async (req, res) => {
       { upsert: true }
     );
 
-    // Sync Collections (Simple approach: clear and re-insert for this demo)
-    // In a real app, you'd use bulkWrite or individual updates
+    // Sync Collections
     await Member.deleteMany({ gymName });
     if (members?.length) await Member.insertMany(members.map((m: any) => ({ ...m, gymName })));
 
@@ -231,6 +241,10 @@ app.post("/api/gym/:name/sync", async (req, res) => {
     res.status(500).json({ error: "Failed to sync data" });
   }
 });
+
+// Mount the router
+app.use("/api", router);
+app.use("/", router); // Fallback for Netlify functions where /api might be stripped
 
 // --- Vite Integration ---
 
