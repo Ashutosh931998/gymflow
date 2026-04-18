@@ -19,17 +19,31 @@ const MONGODB_URI = process.env.MONGODB_URI;
 let isConnected = false;
 
 export const connectDB = async () => {
-  if (isConnected) return;
+  if (isConnected && mongoose.connection.readyState === 1) return;
 
   if (!MONGODB_URI) {
     console.error("CRITICAL ERROR: MONGODB_URI environment variable is not set.");
     return;
   }
 
+  // Ensure a database name is specified if not present in URI
+  let connectionUri = MONGODB_URI;
+  if (!connectionUri.includes(".net/") && !connectionUri.includes(".net:27017/")) {
+     // If the URI is like ...net/?appName... we insert 'gymflow'
+     if (connectionUri.includes(".net/?")) {
+       connectionUri = connectionUri.replace(".net/?", ".net/gymflow?");
+     } else {
+       connectionUri = connectionUri.split('?')[0] + "/gymflow" + (connectionUri.includes('?') ? '?' + connectionUri.split('?')[1] : '');
+     }
+  }
+
   try {
-    await mongoose.connect(MONGODB_URI);
+    console.log("Connecting to MongoDB Atlas...");
+    await mongoose.connect(connectionUri, {
+      serverSelectionTimeoutMS: 5000, // Fail fast if Atlas is unreachable
+    });
     isConnected = true;
-    console.log("Successfully connected to MongoDB Atlas");
+    console.log(`Successfully connected to MongoDB Atlas (DB: ${mongoose.connection.name})`);
   } catch (err) {
     console.error("MongoDB connection error details:", err);
   }
@@ -50,7 +64,7 @@ const GymSchema = new mongoose.Schema({
     receptionist: { pages: [String], actions: [String] }
   }
 });
-const Gym = mongoose.model("Gym", GymSchema);
+const Gym = mongoose.models.Gym || mongoose.model("Gym", GymSchema);
 
 const MemberSchema = new mongoose.Schema({
   gymName: { type: String, required: true },
@@ -63,7 +77,7 @@ const MemberSchema = new mongoose.Schema({
   joinDate: String,
   endDate: String
 });
-const Member = mongoose.model("Member", MemberSchema);
+const Member = mongoose.models.Member || mongoose.model("Member", MemberSchema);
 
 const PlanSchema = new mongoose.Schema({
   gymName: { type: String, required: true },
@@ -73,7 +87,7 @@ const PlanSchema = new mongoose.Schema({
   duration: String,
   features: [String]
 });
-const Plan = mongoose.model("Plan", PlanSchema);
+const Plan = mongoose.models.Plan || mongoose.model("Plan", PlanSchema);
 
 const PaymentSchema = new mongoose.Schema({
   gymName: { type: String, required: true },
@@ -85,7 +99,7 @@ const PaymentSchema = new mongoose.Schema({
   method: String,
   status: String
 });
-const Payment = mongoose.model("Payment", PaymentSchema);
+const Payment = mongoose.models.Payment || mongoose.model("Payment", PaymentSchema);
 
 const AttendanceSchema = new mongoose.Schema({
   gymName: { type: String, required: true },
@@ -96,7 +110,7 @@ const AttendanceSchema = new mongoose.Schema({
   time: String,
   checkOutTime: String
 });
-const Attendance = mongoose.model("Attendance", AttendanceSchema);
+const Attendance = mongoose.models.Attendance || mongoose.model("Attendance", AttendanceSchema);
 
 const StaffSchema = new mongoose.Schema({
   gymName: { type: String, required: true },
@@ -105,7 +119,7 @@ const StaffSchema = new mongoose.Schema({
   email: { type: String, required: true },
   role: String
 });
-const Staff = mongoose.model("Staff", StaffSchema);
+const Staff = mongoose.models.Staff || mongoose.model("Staff", StaffSchema);
 
 const LeadSchema = new mongoose.Schema({
   gymName: { type: String, required: true },
@@ -118,7 +132,7 @@ const LeadSchema = new mongoose.Schema({
   notes: String,
   createdAt: String
 });
-const Lead = mongoose.model("Lead", LeadSchema);
+const Lead = mongoose.models.Lead || mongoose.model("Lead", LeadSchema);
 
 const RegistrySchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
@@ -127,7 +141,7 @@ const RegistrySchema = new mongoose.Schema({
   gymName: String,
   name: String
 });
-const Registry = mongoose.model("Registry", RegistrySchema);
+const Registry = mongoose.models.Registry || mongoose.model("Registry", RegistrySchema);
 
 // --- API Routes ---
 const router = express.Router();

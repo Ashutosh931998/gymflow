@@ -19,17 +19,12 @@ Netlify should automatically detect the settings from `netlify.toml`:
 
 ### 4. Set Environment Variables
 In the Netlify dashboard, go to **Site settings** -> **Environment variables** and add:
-*   **`MONGODB_URI`**: Your MongoDB Atlas connection string.
+*   **`MONGODB_URI`**: Your MongoDB Atlas connection string (The app now automatically ensures a database name is used).
 *   **`NODE_ENV`**: Set to `production`.
-*   **`GEMINI_API_KEY`**: (If you're using any Gemini features).
+*   **`GEMINI_API_KEY`**: (Required for Promo Reel feature).
 
-### 5. Deploy
-Click **"Deploy site"**. Netlify will build your React frontend and your Express backend (as a serverless function).
-
-### Local Testing
-To test the Netlify deployment locally, you can use the Netlify CLI:
-```bash
-npm install -g netlify-cli
-netlify dev
-```
-This will start both the frontend and the backend function locally.
+### Troubleshooting Connections
+If data is not appearing in Atlas:
+1. **Re-deploy**: After adding the environment variable, you must click **"Trigger deploy"** -> **"Clear cache and deploy site"**.
+2. **Check Logs**: In Netlify, go to **Logs** -> **Functions** -> **api**. You should see "Successfully connected to MongoDB Atlas (DB: gymflow)".
+3. **Atlas Whitelist**: Ensure `0.0.0.0/0` is active in MongoDB Atlas Network Access.
