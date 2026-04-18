@@ -3,7 +3,6 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 
 dotenv.config();
 
@@ -64,7 +63,7 @@ const GymSchema = new mongoose.Schema({
     receptionist: { pages: [String], actions: [String] }
   }
 });
-const Gym = mongoose.models.Gym || mongoose.model("Gym", GymSchema);
+const Gym = (mongoose.models.Gym as any) || mongoose.model("Gym", GymSchema);
 
 const MemberSchema = new mongoose.Schema({
   gymName: { type: String, required: true },
@@ -77,7 +76,7 @@ const MemberSchema = new mongoose.Schema({
   joinDate: String,
   endDate: String
 });
-const Member = mongoose.models.Member || mongoose.model("Member", MemberSchema);
+const Member = (mongoose.models.Member as any) || mongoose.model("Member", MemberSchema);
 
 const PlanSchema = new mongoose.Schema({
   gymName: { type: String, required: true },
@@ -87,7 +86,7 @@ const PlanSchema = new mongoose.Schema({
   duration: String,
   features: [String]
 });
-const Plan = mongoose.models.Plan || mongoose.model("Plan", PlanSchema);
+const Plan = (mongoose.models.Plan as any) || mongoose.model("Plan", PlanSchema);
 
 const PaymentSchema = new mongoose.Schema({
   gymName: { type: String, required: true },
@@ -99,7 +98,7 @@ const PaymentSchema = new mongoose.Schema({
   method: String,
   status: String
 });
-const Payment = mongoose.models.Payment || mongoose.model("Payment", PaymentSchema);
+const Payment = (mongoose.models.Payment as any) || mongoose.model("Payment", PaymentSchema);
 
 const AttendanceSchema = new mongoose.Schema({
   gymName: { type: String, required: true },
@@ -110,7 +109,7 @@ const AttendanceSchema = new mongoose.Schema({
   time: String,
   checkOutTime: String
 });
-const Attendance = mongoose.models.Attendance || mongoose.model("Attendance", AttendanceSchema);
+const Attendance = (mongoose.models.Attendance as any) || mongoose.model("Attendance", AttendanceSchema);
 
 const StaffSchema = new mongoose.Schema({
   gymName: { type: String, required: true },
@@ -119,7 +118,7 @@ const StaffSchema = new mongoose.Schema({
   email: { type: String, required: true },
   role: String
 });
-const Staff = mongoose.models.Staff || mongoose.model("Staff", StaffSchema);
+const Staff = (mongoose.models.Staff as any) || mongoose.model("Staff", StaffSchema);
 
 const LeadSchema = new mongoose.Schema({
   gymName: { type: String, required: true },
@@ -132,7 +131,7 @@ const LeadSchema = new mongoose.Schema({
   notes: String,
   createdAt: String
 });
-const Lead = mongoose.models.Lead || mongoose.model("Lead", LeadSchema);
+const Lead = (mongoose.models.Lead as any) || mongoose.model("Lead", LeadSchema);
 
 const RegistrySchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
@@ -141,7 +140,7 @@ const RegistrySchema = new mongoose.Schema({
   gymName: String,
   name: String
 });
-const Registry = mongoose.models.Registry || mongoose.model("Registry", RegistrySchema);
+const Registry = (mongoose.models.Registry as any) || mongoose.model("Registry", RegistrySchema);
 
 // --- API Routes ---
 const router = express.Router();
@@ -264,6 +263,7 @@ app.use("/", router); // Fallback for Netlify functions where /api might be stri
 
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
