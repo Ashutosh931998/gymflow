@@ -36,11 +36,19 @@ export const DB = {
   },
   save: async (gymName: string, data: any) => {
     try {
-      await fetch(`/api/gym/${encodeURIComponent(gymName)}/sync`, {
+      const res = await fetch(`/api/gym/${encodeURIComponent(gymName)}/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data)
       });
-    } catch {}
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Server returned ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error("Save Error:", err);
+      throw err;
+    }
   },
 };

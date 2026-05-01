@@ -259,31 +259,39 @@ router.post("/gym/:name/sync", async (req, res) => {
 app.use("/api", router);
 app.use("/", router); // Fallback for Netlify functions where /api might be stripped
 
-// --- Vite Integration ---
+// --- Vite & Static Serves ---
 
-async function startServer() {
+if (!process.env.NETLIFY) {
   if (process.env.NODE_ENV !== "production") {
-    const { createServer: createViteServer } = await import("vite");
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
+    // Only attempt to load Vite in local development
+    // Using simple logic to avoid bundler analysis if possible
+    const setupVite = async () => {
+      try {
+        const { createServer: createViteServer } = await import("vite");
+        const vite = await createViteServer({
+          server: { middlewareMode: true },
+          appType: "spa",
+        });
+        app.use(vite.middlewares);
+        app.listen(PORT, "0.0.0.0", () => {
+          console.log(`Development server running on http://localhost:${PORT}`);
+        });
+      } catch (err) {
+        console.error("Failed to start Vite dev server:", err);
+      }
+    };
+    setupVite();
   } else {
+    // Local production serving (not needed on Netlify)
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Production preview server running on http://localhost:${PORT}`);
+    });
   }
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
-}
-
-if (process.env.NODE_ENV !== "production" && !process.env.NETLIFY) {
-  startServer();
 }
 
 export default app;
